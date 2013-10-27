@@ -13,3 +13,5 @@ token: username:token
 </pre>
 
 Find your API token [here](https://pinboard.in/settings/password)
+
+And then run `python pinboard.py`
