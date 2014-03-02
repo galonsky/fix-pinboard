@@ -1,8 +1,8 @@
-import urllib, urllib2, json, ConfigParser, time, HTMLParser, socket, re
-from BeautifulSoup import BeautifulSoup
-from cookielib import CookieJar
+import urllib.request, urllib.parse, urllib.error, urllib.request, urllib.error, urllib.parse, json, configparser, time, html.parser, socket, re
+from bs4 import BeautifulSoup
+from http.cookiejar import CookieJar
 
-config = ConfigParser.ConfigParser()
+config = configparser.ConfigParser()
 config.read(['auth.cfg'])
 API_KEY = config.get('auth', 'token')
 IGNORE_TAG = 'dont_fix'
@@ -20,8 +20,8 @@ def add_bookmark(url, title, datetime, tags):
         'auth_token': API_KEY
     }
     base_url = "https://api.pinboard.in/v1/posts/add"
-    add_url = base_url + '?' + urllib.urlencode(params)
-    print urllib2.urlopen(add_url).read()
+    add_url = base_url + '?' + urllib.parse.urlencode(params)
+    print(urllib.request.urlopen(add_url).read().decode("utf-8"))
 
 def get_bookmarks():
     params = {
@@ -29,26 +29,26 @@ def get_bookmarks():
         'format': 'json'
     }
     base_url = "https://api.pinboard.in/v1/posts/all"
-    get_url = base_url + '?' + urllib.urlencode(params)
-    return json.load(urllib2.urlopen(get_url))
+    get_url = base_url + '?' + urllib.parse.urlencode(params)
+    response = urllib.request.urlopen(get_url)
+    return json.loads(response.read().decode("utf-8"))
 
 def get_title(url):
     cj = CookieJar()
-    opener = urllib2.build_opener(urllib2.HTTPCookieProcessor(cj))
-    req = urllib2.Request(url, headers={'User-Agent' : "Magic Browser"})
-    print 'opening ' + url
+    opener = urllib.request.build_opener(urllib.request.HTTPCookieProcessor(cj))
+    req = urllib.request.Request(url, headers={'User-Agent' : "Magic Browser"})
+    print('opening ' + url)
     con = opener.open(req)
-    info = con.info();
-    if is_html(info.headers):
+    if is_html(con.getheader('Content-Type')):
         BS = BeautifulSoup(con)
-        h = HTMLParser.HTMLParser()
+        h = html.parser.HTMLParser()
         return h.unescape(BS.find('title').text)
     else:
         raise Exception("Not HTML!")
 
 def has_html_entities(title):
-    print "start entities"
-    h = HTMLParser.HTMLParser()
+    print("start entities")
+    h = html.parser.HTMLParser()
     return title != h.unescape(title)
 
 def should_ignore(tags):
@@ -57,15 +57,12 @@ def should_ignore(tags):
 def should_process(bookmark):
     title = bookmark['description']
     if should_ignore(bookmark['tags']):
-        print 'ignoring ' + bookmark['description']
+        print('ignoring ' + bookmark['description'])
         return False;
     return title == 'Untitled' or 'http://' in title or has_html_entities(title)
 
-def is_html(headers):
-    for header in headers:
-        if re.match('Content-[tT]ype: text/html', header):
-            return True;
-    return False;
+def is_html(header):
+    return re.match('text/html', header)
 
 def add_tag(tags, tag):
     tags_list = tags.split()
@@ -84,24 +81,25 @@ def fix_bookmarks():
             # we've already processed up to this point
             break
         if should_process(bookmark):
-            print "should process"
+            print("should process")
             count = count + 1
             try:
-                print "start title"
+                print("start title")
                 title = get_title(bookmark['href'])
-                print "end title"
-            except:
+                print("end title")
+            except Exception as e:
+                print(e)
                 # Add ignore tag
                 add_bookmark(bookmark['href'], bookmark['description'], bookmark['time'], add_tag(bookmark['tags'], IGNORE_TAG))
                 continue
-            print bookmark['href'] + ' ' + title
-            print "sleeping"
+            print(bookmark['href'] + ' ' + title)
+            print("sleeping")
             time.sleep(3)
-            print "adding"
+            print("adding")
             add_bookmark(bookmark['href'], title, bookmark['time'], add_tag(bookmark['tags'], FIXED_TAG))
-            print "done adding"
+            print("done adding")
         else:
-            print "should not process"
-    print count
+            print("should not process")
+    print(count)
 
 fix_bookmarks()
