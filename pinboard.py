@@ -7,6 +7,9 @@ config.read(['auth.cfg'])
 API_KEY = config.get('auth', 'token')
 IGNORE_TAG = 'dont_fix'
 FIXED_TAG = 'fixed'
+LAST_PROCESSED_FILENAME = '.lastprocessed'
+DATETIME_FORMAT = "%Y-%m-%dT%H:%M:%SZ"
+DEFAULT_DATETIME = '0001-01-01T00:00:00Z'
 
 socket.setdefaulttimeout(3)
 
@@ -23,10 +26,11 @@ def add_bookmark(url, title, datetime, tags):
     add_url = base_url + '?' + urllib.parse.urlencode(params)
     print(urllib.request.urlopen(add_url).read().decode("utf-8"))
 
-def get_bookmarks():
+def get_bookmarks(last_processed_datetime):
     params = {
         'auth_token': API_KEY,
-        'format': 'json'
+        'format': 'json',
+        'fromdt': last_processed_datetime
     }
     base_url = "https://api.pinboard.in/v1/posts/all"
     get_url = base_url + '?' + urllib.parse.urlencode(params)
@@ -73,8 +77,23 @@ def already_processed(tags):
     tags_list = tags.split()
     return IGNORE_TAG in tags_list or FIXED_TAG in tags_list
 
+def get_last_processed_datetime():
+    try:
+        with open(LAST_PROCESSED_FILENAME, 'r') as f:
+            date = f.read()
+            if len(date) != 20:
+                return DEFAULT_DATETIME
+            else:
+                return date
+    except FileNotFoundError as e:
+        return DEFAULT_DATETIME
+
+def write_last_processed_datetime():
+    with open(LAST_PROCESSED_FILENAME, 'w') as f:
+        f.write(time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime()))
+
 def fix_bookmarks():
-    bookmarks = get_bookmarks()
+    bookmarks = get_bookmarks(get_last_processed_datetime())
     count = 0
     for bookmark in bookmarks:
         if (already_processed(bookmark['tags'])):
@@ -101,5 +120,6 @@ def fix_bookmarks():
         else:
             print("should not process")
     print(count)
+    write_last_processed_datetime()
 
 fix_bookmarks()

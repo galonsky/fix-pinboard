@@ -1,4 +1,5 @@
 auth.cfg
+.lastprocessed
 *.py[cod]
 
 # C extensions
